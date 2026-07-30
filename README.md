@@ -8,7 +8,7 @@ A Python platform that measures whether **AI agents can navigate, extract data f
 
 ## The thesis
 
-AI Agents are becoming the buyer. When someone asks an agent to "find and book a dentist near me," the agent can only act on a business whose site it can read and transact with. Most businesses fail at least one of those steps and never learn why.
+AI assistants are becoming the buyer. When someone asks an agent to "find and book a dentist near me," the agent can only act on a business whose site it can read and transact with. Most businesses fail at least one of those steps and never learn why.
 
 I coined the category for measuring this, **AI Agent Optimization (AAO)**, and built the engine that scores it. AAO is distinct from SEO (search rankings) and AEO (answer visibility): it measures whether an agent can actually *operate* on a site.
 
@@ -104,7 +104,9 @@ I also ran an **autoresearch loop** (research, spec, calibrate, verify) to refin
 
 ## Outcome
 
-Scored 505,140 businesses and built a defensible methodology and dataset. I **paused the venture deliberately** when platform incumbents began surfacing comparable readiness signals for free, rather than continuing to invest in a thinning wedge. The dataset and the AAO framework carried forward into later work.
+Scored 505,140 businesses and built a defensible methodology and dataset. I **paused GradeForAI as a standalone product** when platform incumbents began surfacing comparable readiness signals for free, rather than continuing to invest in a thinning wedge.
+
+The work did not get abandoned, it got redeployed. The **scoring technology and the 505,140-business dataset were folded into CloudAurum**, my AI and workflow consulting practice, where they now surface operational gaps and prospect signals for clients. The AAO framework carried forward with them.
 
 **What this project demonstrates:** taking an ambiguous thesis, building the data and AI system to test it at scale, iterating rigorously against measurable calibration, operating it in production solo, and knowing when to stop.
 
