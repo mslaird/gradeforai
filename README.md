@@ -8,7 +8,7 @@ A Python platform that measures whether **AI agents can navigate, extract data f
 
 ## The thesis
 
-AI assistants are becoming the buyer. When someone asks an agent to "find and book a dentist near me," the agent can only act on a business whose site it can read and transact with. Most businesses fail at least one of those steps and never learn why.
+AI Agents are becoming the buyer. When someone asks an agent to "find and book a dentist near me," the agent can only act on a business whose site it can read and transact with. Most businesses fail at least one of those steps and never learn why.
 
 I coined the category for measuring this, **AI Agent Optimization (AAO)**, and built the engine that scores it. AAO is distinct from SEO (search rankings) and AEO (answer visibility): it measures whether an agent can actually *operate* on a site.
 
