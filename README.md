@@ -4,6 +4,11 @@ A Python platform that measures whether **AI agents can navigate, extract data f
 
 > **What is and is not in this repository.** The scoring engine (`score_engine.py`, 5,661 lines), its dimension weights, per-vertical calibration logic, and the scored dataset are **private** — they are the proprietary core. **Everything around the engine is here**: persistence and schema, the concurrent scorer, the harvesting pipeline, the self-migrating deploy orchestrator, the operator CLI, report generation, the systemd units it ran under, the backup runbook, a production incident postmortem, the adversarial red-team analysis, and the agent-readable surface of the product's own site. Roughly **10,800 lines** across 36 files, published.
 
+**On the shape of this repository.** These files are an extraction from the private working
+repository, which holds **216 commits across 49 days** (2026-03-15 to 2026-05-04). What you see here
+arrived in a single commit because it was copied out, not developed here. The engine and dataset
+stayed behind.
+
 ---
 
 ## The thesis
@@ -164,6 +169,30 @@ Scored 505,140 businesses and built a defensible methodology and dataset. I **pa
 The work did not get abandoned, it got redeployed. The **scoring technology and the 505,140-business dataset were folded into CloudAurum**, my AI and workflow consulting practice, where they now surface operational gaps and prospect signals for clients. The AAO framework carried forward with them.
 
 **What this project demonstrates:** taking an ambiguous thesis, building the data and AI system to test it at scale, iterating rigorously against measurable calibration, operating it in production solo, and knowing when to stop.
+
+## What I would do differently
+
+Reading your own code back is the point of publishing it. Four things I would change:
+
+**Tests.** There aren't any worth the name. Two Playwright smoke tests pointed at the live site, no
+unit tests, no CI. For a scoring engine recalibrated across six versions, every calibration was
+validated by scoring a sample and reading the results by hand. That worked at the scale I was
+operating and it would not survive a second engineer. It is the first thing I would fix.
+
+**`dashboard.py` is a hand-rolled `http.server`.** One thread, an if/elif route table, serving the
+scan API, the Stripe webhook, PDF delivery, and the admin surface together. Scans dispatch to a
+worker so requests return fast, which hid the limitation at the traffic I had. It belongs behind a
+WSGI server with the admin surface split out.
+
+**Migrations are `ALTER TABLE` guarded by `PRAGMA table_info` diffs.** Idempotent and dependency-free,
+which is why I did it, but there is no version history and no down-migration. `businesses` accumulated
+roughly 35 appended columns as a result, and `scores` still carries dead columns from the v3 model.
+
+**Two scoring formulas coexisted in production.** The v5 six-dimension composite and the v6
+four-dimension preference score were both computed and both stored. That divergence produced a real
+customer-visible bug: one domain showed 41/100 on the site and 20/100 in the email for the same scan,
+because the email path was never updated at the v6 reframe. Shipping a second formula without
+retiring the first is the mistake I would most want back.
 
 ---
 
