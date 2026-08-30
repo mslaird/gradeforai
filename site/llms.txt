@@ -1,0 +1,30 @@
+# GradeForAI
+
+> AI Agent Optimization (AAO) scoring platform that grades businesses on whether AI agents can physically operate on their website.
+
+GradeForAI measures whether AI agents can navigate a business website, extract accurate operational data, and complete transactions on behalf of users. We scan any business URL and produce a 0-100 AI Agent Preference Score across 4 dimensions: Agent Accessibility, Transaction Completeness, Data Reliability, and Competitive Position. Scores are industry-calibrated across 10+ verticals.
+
+## Services
+
+- Free AAO Scan: Enter any business URL and get a score with grade instantly. No signup required.
+- Full AAO Report ($199): Detailed PDF with findings, plain-English recommendations, competitor comparison, industry benchmarks, and 30-day implementation roadmap.
+- AAO Implementation ($2,500+): We implement all recommended fixes including Schema.org markup, booking integration, payment setup, llms.txt, and agent-card configuration.
+
+## Data
+
+Hundreds of thousands of service businesses scored across 40+ verticals and 200+ cities. Average score: 27/100. 67% score an F.
+
+## Contact
+
+- Website: https://gradeforai.com
+- Email: hello@gradeforai.com
+- Founder: Mark Laird, Dallas-Fort Worth, TX
+
+## Links
+
+- What is AAO: https://gradeforai.com/aao
+- Glossary: https://gradeforai.com/glossary
+- Benchmark Report: https://gradeforai.com/reports/benchmark
+- About: https://gradeforai.com/about
+- Privacy: https://gradeforai.com/privacy
+- Terms: https://gradeforai.com/terms

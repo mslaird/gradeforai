@@ -1,0 +1,14 @@
+[Unit]
+Description=GradeForAI Post-Deploy Monitor
+After=network.target agent-rescore.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/agent-readiness
+ExecStart=/opt/agent-readiness/venv/bin/python3 -u post_deploy.py
+Restart=no
+StandardOutput=append:/opt/agent-readiness/logs/post_deploy.log
+StandardError=append:/opt/agent-readiness/logs/post_deploy.log
+
+[Install]
+WantedBy=multi-user.target

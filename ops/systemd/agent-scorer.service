@@ -1,0 +1,19 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+Description=Agent Readiness Parallel Scorer
+After=network.target
+
+[Service]
+TimeoutStopSec=300
+Type=simple
+WorkingDirectory=/opt/agent-readiness
+EnvironmentFile=/opt/agent-readiness/.env
+ExecStart=/opt/agent-readiness/venv/bin/python3 -u parallel_scorer.py --workers 15 --interval 5
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/agent-readiness/logs/scorer.log
+StandardError=append:/opt/agent-readiness/logs/scorer-error.log
+
+[Install]
+WantedBy=multi-user.target

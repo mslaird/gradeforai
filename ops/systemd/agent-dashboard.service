@@ -1,0 +1,16 @@
+[Unit]
+Description=Agent Readiness Dashboard
+After=network.target
+
+[Service]
+EnvironmentFile=/opt/agent-readiness/.env
+Type=simple
+WorkingDirectory=/opt/agent-readiness
+ExecStart=/opt/agent-readiness/venv/bin/python3 -u dashboard.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/agent-readiness/logs/dashboard.log
+StandardError=append:/opt/agent-readiness/logs/dashboard-error.log
+
+[Install]
+WantedBy=multi-user.target

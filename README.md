@@ -2,7 +2,7 @@
 
 A Python platform that measures whether **AI agents can navigate, extract data from, and complete transactions on** a business website. Built solo. Scored **505,140 businesses** across **130+ industries and 390+ cities**.
 
-> **Note on this repository.** This is a technical case study. The scoring engine, dimension weights, per-vertical calibration logic, and the scored dataset remain private, since they are the proprietary core of the product. Everything else about how the system was built and operated is documented below.
+> **What is and is not in this repository.** The scoring engine (`score_engine.py`, 5,661 lines), its dimension weights, per-vertical calibration logic, and the scored dataset are **private** — they are the proprietary core. **Everything around the engine is here**: persistence and schema, the concurrent scorer, the harvesting pipeline, the self-migrating deploy orchestrator, the operator CLI, report generation, the systemd units it ran under, the backup runbook, a production incident postmortem, the adversarial red-team analysis, and the agent-readable surface of the product's own site. Roughly **10,800 lines** across 36 files, published.
 
 ---
 
@@ -10,7 +10,7 @@ A Python platform that measures whether **AI agents can navigate, extract data f
 
 AI assistants are becoming the buyer. When someone asks an agent to "find and book a dentist near me," the agent can only act on a business whose site it can read and transact with. Most businesses fail at least one of those steps and never learn why.
 
-I coined the category for measuring this, **AI Agent Optimization (AAO)**, and built the engine that scores it. AAO is distinct from SEO (search rankings) and AEO (answer visibility): it measures whether an agent can actually *operate* on a site.
+I built the engine that scores it, under the framing **AI Agent Optimization (AAO)**. AAO is distinct from SEO (search rankings) and AEO (answer visibility): it measures whether an agent can actually *operate* on a site.
 
 **The finding across half a million businesses: 89% were below agent-ready.**
 
@@ -40,18 +40,73 @@ Discovery  →  Harvest  →  Score  →  Store  →  Report
             harvest      scorer     history
 ```
 
-Roughly **18,000 lines of Python** across 17 modules. Module sizes give a sense of where the complexity sits:
+Roughly **18,000 lines of Python** across 17 modules. Here is what is in this repository and what is not:
 
-| Module | Lines | Role |
-|---|---:|---|
-| `score_engine.py` | 5,661 | Scoring logic and per-vertical calibration *(private)* |
-| `dashboard.py` | 2,324 | Admin dashboard and aggregate views |
-| `pdf_report_v2.py` | 2,038 | Client-facing PDF report generation |
-| `storage.py` | 1,421 | SQLite persistence, benchmarks, trend history, CSV export |
-| `serper_harvest.py` | 490 | Business discovery and harvesting |
-| `auto_harvest.py` | 423 | Scheduled harvest orchestration |
-| `parallel_scorer.py` | 372 | Concurrent scoring across large batches |
-| `cli.py` | 297 | Operator entry point |
+| Module | Lines | Role | |
+|---|---:|---|---|
+| `score_engine.py` | 5,661 | Scoring logic, dimension weights, per-vertical calibration | **private** |
+| [`platform/pdf_report_v2.py`](platform/pdf_report_v2.py) | 2,038 | Client PDF report generation (WeasyPrint, CSS Paged Media) | public |
+| [`platform/storage.py`](platform/storage.py) | 1,421 | SQLite schema, in-place migrations, benchmarks, trend history | public |
+| [`platform/design_tokens.py`](platform/design_tokens.py) | 519 | Centralized report design system | public |
+| [`platform/serper_harvest.py`](platform/serper_harvest.py) | 490 | Business discovery and harvesting | public |
+| [`platform/update_industry_scores.py`](platform/update_industry_scores.py) | 384 | DB to published statistics | public |
+| [`platform/parallel_scorer.py`](platform/parallel_scorer.py) | 372 | Concurrent scoring, dedup, graceful shutdown | public |
+| [`platform/cli.py`](platform/cli.py) | 297 | Operator entry point | public |
+| [`platform/post_deploy.py`](platform/post_deploy.py) | 288 | Version-drift detection and self-migrating rescore | public |
+| [`platform/rescore.py`](platform/rescore.py) | 250 | Scheduled re-scoring service | public |
+| `dashboard.py` | 2,324 | Admin dashboard and aggregate views | private |
+| `auto_harvest.py` | 423 | Fallback harvester | private |
+
+| [`platform/dashboard.py`](platform/dashboard.py) | 2,324 | Admin dashboard, scan API, Stripe webhook (hand-rolled HMAC-SHA256 with a 300s replay window), PDF delivery | public |
+
+Note on `dashboard.py`: it is a hand-rolled `http.server`, not a framework. It served a low-traffic
+admin surface and the scan API, with each scan dispatched to a worker thread so requests return
+immediately. At real traffic this belongs behind a WSGI server. It is published because the Stripe
+signature verification and the TTL-cached aggregate queries are worth reading, and because the
+honest shape of a solo build is more useful than a curated one.
+
+Also here:
+
+- [`ops/`](ops/) — shell automation and the seven systemd units the platform ran under
+- [`tools/`](tools/) — health checks, a continuous scorer, traffic tracking, weekly export
+- [`site/`](site/) — [`build.py`](site/build.py) compiles 17 source pages into 68 output pages so
+  every published statistic derives from a single database query, plus
+  [`site/.well-known/`](site/.well-known/) and [`site/llms.txt`](site/llms.txt): the product scored
+  businesses on whether agents could read them, so its own site implemented the same standards
+- [`docs/`](docs/) — see below
+
+### Three things worth opening first
+
+**[`platform/post_deploy.py`](platform/post_deploy.py) — the deploy migrates the corpus by itself.**
+It reads `METHODOLOGY_VERSION` out of the deployed engine, compares it against
+`SELECT methodology_version, COUNT(*) FROM scores GROUP BY 1`, and if they disagree it rewrites its
+own systemd unit to `--max-age 0`, polls progress, triggers a site rebuild every 10,000 new scores,
+then resets the unit to `--max-age 7` when the pass completes. A half-million-row migration that
+runs itself.
+
+**[`ops/auto_refresh_scores.sh`](ops/auto_refresh_scores.sh) — a regression gate on a statistic.**
+The published national average is derived from the database. If a refresh moves that average by more
+than 15 points, the script refuses to publish, restores the previous JSON, and emails an alert.
+Written after v5.0 shipped inflated scores. Most pipelines guard code; this one guards a number.
+
+**[`platform/serper_harvest.py`](platform/serper_harvest.py) — discovery priced per query.**
+Google Maps discovery via Serper with the unit economics written into the module docstring, plus
+resumable state so a killed run continues where it stopped. The related cost lesson is in
+`score_engine.py`: a Places API field-mask drift silently promoted calls to a higher-priced SKU and
+produced a $211 bill, fixed with a two-step call using a pinned Essentials-only mask and a
+file-backed daily counter.
+
+**[`docs/red-team-analysis.md`](docs/red-team-analysis.md) — I predicted what killed this.**
+A ten-iteration adversarial stress test of the business, written April 2026. Attack Vector 1 opens:
+*"A free 'AI Readiness Score' inside Google Business Profile would destroy GradeForAI's core scanning
+product overnight."* It happened within months, from Cloudflare rather than Google. The document
+names the threat, estimates it, and proposes the pivot. I wound the product down instead of
+defending a thinning wedge.
+
+Also in [`docs/`](docs/): the [disk-full production postmortem](docs/incident-2026-04-25-disk-full.md)
+(timeline, root cause, offsite verification before any deletion, follow-ups), the
+[backup and recovery runbook](docs/backup-and-recovery.md), and a
+[65-item site audit](docs/site-audit-2026-03-31.md).
 
 ## Operator interface
 
@@ -104,7 +159,7 @@ I also ran an **autoresearch loop** (research, spec, calibrate, verify) to refin
 
 ## Outcome
 
-Scored 505,140 businesses and built a defensible methodology and dataset. I **paused GradeForAI as a standalone product** when platform incumbents began surfacing comparable readiness signals for free, rather than continuing to invest in a thinning wedge.
+Scored 505,140 businesses and built a defensible methodology and dataset. I **paused GradeForAI as a standalone product** when Cloudflare began surfacing comparable readiness signals for free, rather than continuing to invest in a thinning wedge.
 
 The work did not get abandoned, it got redeployed. The **scoring technology and the 505,140-business dataset were folded into CloudAurum**, my AI and workflow consulting practice, where they now surface operational gaps and prospect signals for clients. The AAO framework carried forward with them.
 

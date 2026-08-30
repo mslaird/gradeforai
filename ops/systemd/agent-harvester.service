@@ -1,0 +1,19 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+Description=Agent Readiness Harvester
+After=network.target
+
+[Service]
+TimeoutStopSec=300
+EnvironmentFile=/opt/agent-readiness/.env
+Type=simple
+WorkingDirectory=/opt/agent-readiness
+ExecStart=/opt/agent-readiness/venv/bin/python3 -u auto_harvest.py --interval 10 --workers 8
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/agent-readiness/logs/harvester.log
+StandardError=append:/opt/agent-readiness/logs/harvester-error.log
+
+[Install]
+WantedBy=multi-user.target

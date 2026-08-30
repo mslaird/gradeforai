@@ -1,0 +1,38 @@
+{
+  "name": "GradeForAI",
+  "description": "AI Agent Optimization scoring platform. Grades businesses on whether AI agents can navigate, extract data from, and transact with their website. 4 dimensions, industry-calibrated.",
+  "url": "https://gradeforai.com",
+  "provider": {
+    "organization": "Layered Media LLC",
+    "url": "https://gradeforai.com"
+  },
+  "capabilities": [
+    "Score any business URL for AI agent readiness",
+    "Generate detailed AAO reports with recommendations",
+    "Provide industry benchmarks across 40+ verticals",
+    "Compare businesses against local competitors"
+  ],
+  "services": [
+    {
+      "name": "Free AAO Scan",
+      "description": "Instant AI agent readiness score across 4 dimensions",
+      "endpoint": "https://gradeforai.com/api/scan",
+      "price": "Free"
+    },
+    {
+      "name": "Full AAO Report",
+      "description": "Detailed PDF report with findings, recommendations, competitor comparison, and implementation roadmap",
+      "price": "$199 one-time"
+    },
+    {
+      "name": "AAO Implementation",
+      "description": "Full implementation of all recommended fixes",
+      "price": "$2,500+"
+    }
+  ],
+  "contact": {
+    "email": "hello@gradeforai.com",
+    "website": "https://gradeforai.com"
+  },
+  "version": "1.0.0"
+}

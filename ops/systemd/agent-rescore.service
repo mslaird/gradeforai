@@ -1,0 +1,19 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+Description=Agent Readiness Re-scorer
+After=network.target
+
+[Service]
+TimeoutStopSec=300
+EnvironmentFile=/opt/agent-readiness/.env
+Type=simple
+WorkingDirectory=/opt/agent-readiness
+ExecStart=/opt/agent-readiness/venv/bin/python3 -u rescore.py --max-age 0 --workers 15
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/agent-readiness/logs/rescore.log
+StandardError=append:/opt/agent-readiness/logs/rescore-error.log
+
+[Install]
+WantedBy=multi-user.target
