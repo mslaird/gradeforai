@@ -156,7 +156,12 @@ Supporting operational work: parallel scoring to make half a million records tra
 
 The scoring engine went through **six major versions**. Each iteration was treated as a measurable calibration problem rather than an opinion: score a sample, compare against manually verified ground truth, diagnose which dimension was miscalibrated, adjust, re-verify. Calibration findings were documented per version.
 
-I also ran an **autoresearch loop** (research, spec, calibrate, verify) to refine methodology against real-world data instead of intuition.
+I also ran an **autoresearch loop** (research, spec, calibrate, verify) to refine methodology against
+real-world data instead of intuition — four parallel research agents whose findings were synthesized
+and then verified in a second pass. [`docs/autoresearch-v5-findings.md`](docs/autoresearch-v5-findings.md)
+is one of those outputs: the v4-to-v5 redesign, benchmarked against how FICO and SecurityScorecard
+handle per-vertical scoring, and the argument for why vertical-conditional *check logic* is required
+rather than weight adjustment alone.
 
 ## Stack
 
