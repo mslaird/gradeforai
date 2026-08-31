@@ -174,10 +174,13 @@ The work did not get abandoned, it got redeployed. The **scoring technology and 
 
 Reading your own code back is the point of publishing it. Four things I would change:
 
-**Tests.** There aren't any worth the name. Two Playwright smoke tests pointed at the live site, no
-unit tests, no CI. For a scoring engine recalibrated across six versions, every calibration was
-validated by scoring a sample and reading the results by hand. That worked at the scale I was
-operating and it would not survive a second engineer. It is the first thing I would fix.
+**Testing stopped at the edges.** [`tests/`](tests/) holds two Playwright end-to-end suites against
+the live site — the scan flow (homepage, submit, results, email gate, payment link, plus console
+errors, broken links, and mobile viewports) and a conversion-path check. What does not exist is a
+single unit test over the scoring engine. For an engine recalibrated across six versions, every
+calibration was validated by scoring a sample and reading the results by hand. That held at the
+scale I ran it and would not survive a second engineer. No CI either. It is the first thing I
+would fix.
 
 **`dashboard.py` is a hand-rolled `http.server`.** One thread, an if/elif route table, serving the
 scan API, the Stripe webhook, PDF delivery, and the admin surface together. Scans dispatch to a
