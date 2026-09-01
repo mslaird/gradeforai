@@ -41,7 +41,7 @@ import hashlib
 import hmac
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-STRIPE_WEBHOOK_SECRET = "whsec_PURGED_FROM_HISTORY_ROTATED_IN_STRIPE"
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 FROM_EMAIL = "Mark at GradeForAI <mark@gradeforai.com>"
 
 
