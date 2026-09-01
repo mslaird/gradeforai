@@ -34,6 +34,12 @@ The composite 0-100 score spans six dimensions, each calibrated per industry so 
 
 *Weights, signal checks, and calibration thresholds are intentionally not published.*
 
+**A caveat on the number six.** The composite above is the v5 model. The v6 reframe shipped a
+four-dimension **AI Agent Preference Score** (Agent Accessibility, Transaction Completeness, Data
+Reliability, Competitive Position), and both formulas were computed and stored in production — which
+is the divergence described under *What I would do differently*. The site and the agent-readable
+surface say four because that is what shipped last.
+
 ## System architecture
 
 ```
@@ -59,7 +65,6 @@ Roughly **18,000 lines of Python** across 17 modules. Here is what is in this re
 | [`platform/cli.py`](platform/cli.py) | 297 | Operator entry point | public |
 | [`platform/post_deploy.py`](platform/post_deploy.py) | 288 | Version-drift detection and self-migrating rescore | public |
 | [`platform/rescore.py`](platform/rescore.py) | 250 | Scheduled re-scoring service | public |
-| `dashboard.py` | 2,324 | Admin dashboard and aggregate views | private |
 | `auto_harvest.py` | 423 | Fallback harvester | private |
 
 | [`platform/dashboard.py`](platform/dashboard.py) | 2,324 | Admin dashboard, scan API, Stripe webhook (hand-rolled HMAC-SHA256 with a 300s replay window), PDF delivery | public |
@@ -174,6 +179,25 @@ Scored 505,140 businesses and built a defensible methodology and dataset. I **pa
 The work did not get abandoned, it got redeployed. The **scoring technology and the 505,140-business dataset were folded into CloudAurum**, my AI and workflow consulting practice, where they now surface operational gaps and prospect signals for clients. The AAO framework carried forward with them.
 
 **What this project demonstrates:** taking an ambiguous thesis, building the data and AI system to test it at scale, iterating rigorously against measurable calibration, operating it in production solo, and knowing when to stop.
+
+## Two bugs found reviewing this cold
+
+Publishing meant re-reading code I had not looked at in months. Two things were wrong, and both are
+fixed in the tree:
+
+**The deploy orchestrator disarmed its own safety guard.** `post_deploy.py` called
+[`ops/auto_refresh_scores.sh`](ops/auto_refresh_scores.sh) with `--force`, which is the flag that
+disables the drift guard. The guard exists because v5.0 shipped inflated scores; it blocks a publish
+when the national average moves more than 15 points. Its own alert text says *"Do NOT use --force
+until the scoring engine is recalibrated"* — and the orchestrator passed it unconditionally during
+methodology migrations, the exact case it was built for. Armed on the routine path, disabled on the
+risky one. Removed, and the exit code is now checked.
+
+**`init_db()` could not bootstrap a fresh database.** The index on `scores(methodology_version)` was
+created in the same script as a `CREATE TABLE scores` that never declared the column — it arrived
+later via `ALTER TABLE`. Against clean SQLite: `no such column: methodology_version`. It never bit
+because production was migrated incrementally and never rebuilt, which is the real cost of the
+migration approach criticized below: the schema was not reproducible from the source.
 
 ## What I would do differently
 
