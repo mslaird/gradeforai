@@ -118,6 +118,25 @@ Also in [`docs/`](docs/): the [disk-full production postmortem](docs/incident-20
 [backup and recovery runbook](docs/backup-and-recovery.md), and a
 [65-item site audit](docs/site-audit-2026-03-31.md).
 
+## Running it from a clean clone
+
+The real engine is private, so the published modules import a symbol that is not in this repo. A
+stub supplies it so everything else is executable:
+
+```bash
+pip install -r requirements.txt
+cp platform/score_engine_stub.py platform/score_engine.py
+python platform/cli.py score https://example-plumbing.com --vertical plumber --city Dallas --state TX
+
+python tests/run_tests.py    # 4 tests, no pytest required
+```
+
+`score_engine_stub.py` returns hash-derived placeholder values with the same shape as a real result.
+It scrapes nothing and measures nothing, and every result it produces is stamped
+`methodology_version: "stub"`. The band cutoffs in it are real but already public — they appear in
+this README and on every sample report. The weights that decide which side of a cutoff a business
+lands on are what stays private.
+
 ## Operator interface
 
 ```bash
