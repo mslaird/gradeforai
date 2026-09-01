@@ -81,6 +81,11 @@ def init_db():
                 verifiability_score REAL,
                 payability_score REAL,
                 raw_json TEXT,
+                -- Declared here so a fresh bootstrap matches a migrated DB.
+                -- idx_scores_methodology (below) indexes this column in the same
+                -- executescript, so creating the index failed on a clean database
+                -- when this column only arrived via the later ALTER TABLE.
+                methodology_version TEXT,
                 FOREIGN KEY (business_id) REFERENCES businesses(id)
             );
 

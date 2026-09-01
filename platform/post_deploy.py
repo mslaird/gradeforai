@@ -132,7 +132,11 @@ def set_service_max_age(age):
 
 
 def run_refresh():
-    """Run auto_refresh_scores.sh to update industry data and rebuild site."""
+    """Run auto_refresh_scores.sh to update industry data and rebuild site.
+
+    Returns True on success, False if the refresh was blocked or failed.
+    """
+    result = None
     if not os.path.isfile(REFRESH_SCRIPT):
         log(f"Refresh script not found: {REFRESH_SCRIPT}")
         log("Running update_industry_scores.py + build.py directly...")
@@ -145,8 +149,22 @@ def run_refresh():
             cwd=SCRIPT_DIR, check=True,
         )
     else:
-        subprocess.run([REFRESH_SCRIPT, "--force", "--notify"], cwd=SCRIPT_DIR, check=True)
+        # NOTE: deliberately NOT passing --force. --force disables the drift guard
+        # in auto_refresh_scores.sh, and this function runs during a methodology
+        # migration, which is precisely when a large unexpected shift in the
+        # national average means the new engine is miscalibrated. The guard's own
+        # alert text says "Do NOT use --force until the scoring engine is
+        # recalibrated"; passing it here contradicted that. If the guard blocks,
+        # it restores the previous JSON, emails, and exits 1 -- which surfaces
+        # below as a refresh failure rather than silently publishing bad scores.
+        result = subprocess.run([REFRESH_SCRIPT, "--notify"], cwd=SCRIPT_DIR)
+    if result is not None and result.returncode != 0:
+        log(f"Refresh script exited {result.returncode}. If this was the drift guard, "
+            f"the previous published data was restored and the new scores were NOT published. "
+            f"Inspect calibration before re-running.")
+        return False
     log("Industry data refreshed and website rebuilt.")
+    return True
 
 
 def load_state():
@@ -231,11 +249,15 @@ def run_post_deploy(force=False):
         if since_refresh >= REFRESH_THRESHOLD:
             log(f"{since_refresh:,} new scores since last refresh. Updating industry data...")
             try:
-                run_refresh()
-                last_refresh_at = current_latest
-                state["last_refresh_count"] = current_latest
-                state["last_refresh_time"] = datetime.now(timezone.utc).isoformat()
-                save_state(state)
+                # Advance the watermark only if the refresh actually published.
+                # If the drift guard blocked it, leaving the watermark alone means
+                # the next threshold crossing retries rather than waiting for
+                # another REFRESH_THRESHOLD scores to accumulate.
+                if run_refresh():
+                    last_refresh_at = current_latest
+                    state["last_refresh_count"] = current_latest
+                    state["last_refresh_time"] = datetime.now(timezone.utc).isoformat()
+                    save_state(state)
             except Exception as e:
                 log(f"Refresh failed: {e}")
 
