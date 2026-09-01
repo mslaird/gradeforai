@@ -1,3 +1,7 @@
 
 # Generated demo output
 reports/
+__pycache__/
+*.pyc
+# The stub is copied to this name to run the demo; never commit it.
+platform/score_engine.py
