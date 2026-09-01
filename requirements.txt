@@ -1,1 +1,11 @@
+# Core runtime
 requests>=2.31.0
+
+# PDF report generation (platform/pdf_report_v2.py, imported lazily)
+weasyprint>=60.0
+
+# Image handling in the admin dashboard (platform/dashboard.py, imported lazily)
+Pillow>=10.0.0
+
+# End-to-end suites in tests/ (imported at module level -- required to run them)
+playwright>=1.40.0

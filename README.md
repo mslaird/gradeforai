@@ -2,7 +2,7 @@
 
 A Python platform that measures whether **AI agents can navigate, extract data from, and complete transactions on** a business website. Built solo. Scored **505,140 businesses** across **130+ industries and 390+ cities**.
 
-> **What is and is not in this repository.** The scoring engine (`score_engine.py`, 5,661 lines), its dimension weights, per-vertical calibration logic, and the scored dataset are **private** — they are the proprietary core. **Everything around the engine is here**: persistence and schema, the concurrent scorer, the harvesting pipeline, the self-migrating deploy orchestrator, the operator CLI, report generation, the systemd units it ran under, the backup runbook, a production incident postmortem, the adversarial red-team analysis, and the agent-readable surface of the product's own site. Roughly **10,800 lines** across 36 files, published.
+> **What is and is not in this repository.** The scoring engine (`score_engine.py`, 5,661 lines), its dimension weights, per-vertical calibration logic, and the scored dataset are **private** — they are the proprietary core. **Everything around the engine is here**: persistence and schema, the concurrent scorer, the harvesting pipeline, the self-migrating deploy orchestrator, the operator CLI, report generation, the systemd units it ran under, the backup runbook, a production incident postmortem, the adversarial red-team analysis, and the agent-readable surface of the product's own site. Roughly **12,500 lines** across 46 files, published.
 
 **On the shape of this repository.** These files are an extraction from the private working
 repository, which holds **216 commits across 49 days** (2026-03-15 to 2026-05-04). What you see here
@@ -51,23 +51,23 @@ Discovery  →  Harvest  →  Score  →  Store  →  Report
             harvest      scorer     history
 ```
 
-Roughly **18,000 lines of Python** across 17 modules. Here is what is in this repository and what is not:
+Roughly **17,000 lines of Python**: 10,626 published here, plus the private `score_engine.py` (5,661)
+and `auto_harvest.py` (423). Here is what is in this repository and what is not:
 
-| Module | Lines | Role | |
+| Module | Lines | Role | Status |
 |---|---:|---|---|
 | `score_engine.py` | 5,661 | Scoring logic, dimension weights, per-vertical calibration | **private** |
+| [`platform/dashboard.py`](platform/dashboard.py) | 2,324 | Admin dashboard, scan API, Stripe webhook (hand-rolled HMAC-SHA256 with a 300s replay window), PDF delivery | public |
 | [`platform/pdf_report_v2.py`](platform/pdf_report_v2.py) | 2,038 | Client PDF report generation (WeasyPrint, CSS Paged Media) | public |
-| [`platform/storage.py`](platform/storage.py) | 1,421 | SQLite schema, in-place migrations, benchmarks, trend history | public |
+| [`platform/storage.py`](platform/storage.py) | 1,426 | SQLite schema, in-place migrations, benchmarks, trend history | public |
 | [`platform/design_tokens.py`](platform/design_tokens.py) | 519 | Centralized report design system | public |
 | [`platform/serper_harvest.py`](platform/serper_harvest.py) | 490 | Business discovery and harvesting | public |
+| `auto_harvest.py` | 423 | Fallback harvester | private |
 | [`platform/update_industry_scores.py`](platform/update_industry_scores.py) | 384 | DB to published statistics | public |
 | [`platform/parallel_scorer.py`](platform/parallel_scorer.py) | 372 | Concurrent scoring, dedup, graceful shutdown | public |
+| [`platform/post_deploy.py`](platform/post_deploy.py) | 310 | Version-drift detection and self-migrating rescore | public |
 | [`platform/cli.py`](platform/cli.py) | 297 | Operator entry point | public |
-| [`platform/post_deploy.py`](platform/post_deploy.py) | 288 | Version-drift detection and self-migrating rescore | public |
 | [`platform/rescore.py`](platform/rescore.py) | 250 | Scheduled re-scoring service | public |
-| `auto_harvest.py` | 423 | Fallback harvester | private |
-
-| [`platform/dashboard.py`](platform/dashboard.py) | 2,324 | Admin dashboard, scan API, Stripe webhook (hand-rolled HMAC-SHA256 with a 300s replay window), PDF delivery | public |
 
 Note on `dashboard.py`: it is a hand-rolled `http.server`, not a framework. It served a low-traffic
 admin surface and the scan API, with each scan dispatched to a worker thread so requests return
@@ -79,8 +79,13 @@ Also here:
 
 - [`ops/`](ops/) — shell automation and the seven systemd units the platform ran under
 - [`tools/`](tools/) — health checks, a continuous scorer, traffic tracking, weekly export
-- [`site/`](site/) — [`build.py`](site/build.py) compiles 17 source pages into 68 output pages so
-  every published statistic derives from a single database query, plus
+- [`site/`](site/) — [`build.py`](site/build.py) is the static generator for the product's own
+  site. Its point is that **every published statistic derives from a single database query**:
+  [`update_industry_scores.py`](platform/update_industry_scores.py) writes `industry_data.json`
+  straight out of SQLite, and `build.py` injects those values into every page at build time, so no
+  number on the site was ever typed by hand. The page tree (`site/src/`) and `industry_data.json`
+  are not published, so from a clean clone it renders nothing — the generator is here, its content
+  is not. Also published:
   [`site/.well-known/`](site/.well-known/) and [`site/llms.txt`](site/llms.txt): the product scored
   businesses on whether agents could read them, so its own site implemented the same standards
 - [`docs/`](docs/) — see below
@@ -89,8 +94,8 @@ Also here:
 
 **[`platform/post_deploy.py`](platform/post_deploy.py) — the deploy migrates the corpus by itself.**
 It reads `METHODOLOGY_VERSION` out of the deployed engine, compares it against
-`SELECT methodology_version, COUNT(*) FROM scores GROUP BY 1`, and if they disagree it rewrites its
-own systemd unit to `--max-age 0`, polls progress, triggers a site rebuild every 10,000 new scores,
+`SELECT methodology_version, COUNT(*) FROM scores GROUP BY 1`, and if they disagree it rewrites the
+rescore service's systemd unit to `--max-age 0`, polls progress, triggers a site rebuild every 10,000 new scores,
 then resets the unit to `--max-age 7` when the pass completes. A half-million-row migration that
 runs itself.
 
@@ -112,6 +117,15 @@ A ten-iteration adversarial stress test of the business, written April 2026. Att
 product overnight."* It happened within months, from Cloudflare rather than Google. The document
 names the threat, estimates it, and proposes the pivot. I wound the product down instead of
 defending a thinning wedge.
+
+**A note on [`site/llms.txt`](site/llms.txt) and [`site/llms-full.txt`](site/llms-full.txt).** These
+are the artifacts exactly as they shipped, not cleaned up for this repository, and their numbers do
+not match the ones at the top of this README: they report a 4-dimension score, an average of 27 or 34
+rather than the v5 figures, and `llms.txt` contradicts itself on vertical count between its summary
+and its stats block. That is not an oversight in the extraction — it is the v5-to-v6 divergence
+confessed at the end of this README, visible in the published output. Two formulas were live at once
+and the agent-facing surface drifted from the site. I have left it as it was rather than retouch a
+record of the mistake.
 
 Also in [`docs/`](docs/): the [disk-full production postmortem](docs/incident-2026-04-25-disk-full.md)
 (timeline, root cause, offsite verification before any deletion, follow-ups), the
@@ -139,23 +153,30 @@ lands on are what stays private.
 
 ## Operator interface
 
+The real engine is private, so first drop the stub in place (same step as the clean-clone
+section above). Without it `cli.py` raises `ModuleNotFoundError: No module named 'score_engine'`:
+
 ```bash
+cp platform/score_engine_stub.py platform/score_engine.py
+
 # Score a single business
-python cli.py score https://example-plumbing.com --vertical plumber --city Dallas --state TX
+python platform/cli.py score https://example-plumbing.com --vertical plumber --city Dallas --state TX
 
 # Bulk score from a file
-python cli.py bulk urls.txt --vertical plumber --city Dallas --state TX
+python platform/cli.py bulk urls.txt --vertical plumber --city Dallas --state TX
 
 # Per-vertical benchmarks
-python cli.py benchmarks --vertical plumber --city Dallas
+python platform/cli.py benchmarks --vertical plumber --city Dallas
 
 # Score history for a domain
-python cli.py history example-plumbing.com
+python platform/cli.py history example-plumbing.com
 
 # Export and aggregate stats
-python cli.py export output.csv
-python cli.py stats
+python platform/cli.py export output.csv
+python platform/cli.py stats
 ```
+
+Scores come back from the stub, not the real engine, and are labelled as such.
 
 ## Running it in production
 
