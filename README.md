@@ -2,10 +2,10 @@
 
 A Python platform that measures whether **AI agents can navigate, extract data from, and complete transactions on** a business website. Built solo. Scored **505,140 businesses** across **130+ industries and 390+ cities**.
 
-> **What is and is not in this repository.** The scoring engine (`score_engine.py`, 5,661 lines), its dimension weights, per-vertical calibration logic, and the scored dataset are **private** — they are the proprietary core. **Everything around the engine is here**: persistence and schema, the concurrent scorer, the harvesting pipeline, the self-migrating deploy orchestrator, the operator CLI, report generation, the systemd units it ran under, the backup runbook, a production incident postmortem, the adversarial red-team analysis, and the agent-readable surface of the product's own site. Roughly **12,500 lines** across 46 files, published.
+> **What is and is not in this repository.** The scoring engine (`score_engine.py`, 5,661 lines), its dimension weights, per-vertical calibration logic, and the scored dataset are **private** — they are the proprietary core. **Everything around the engine is here**: persistence and schema, the concurrent scorer, the harvesting pipeline, the self-migrating deploy orchestrator, the operator CLI, report generation, the systemd units it ran under, the backup runbook, a production incident postmortem, the adversarial red-team analysis, and the agent-readable surface of the product's own site. Roughly **12,500 lines** across 47 files, published.
 
 **On the shape of this repository.** These files are an extraction from the private working
-repository, which holds **216 commits across 49 days** (2026-03-15 to 2026-05-04). What you see here
+repository, which holds **216 commits across 50 days** (2026-03-15 to 2026-05-04). What you see here
 arrived in a single commit because it was copied out, not developed here. The engine and dataset
 stayed behind.
 
@@ -51,7 +51,7 @@ Discovery  →  Harvest  →  Score  →  Store  →  Report
             harvest      scorer     history
 ```
 
-Roughly **17,000 lines of Python**: 10,626 published here, plus the private `score_engine.py` (5,661)
+Roughly **16,700 lines of Python**: 10,626 published here, plus the private `score_engine.py` (5,661)
 and `auto_harvest.py` (423). Here is what is in this repository and what is not:
 
 | Module | Lines | Role | Status |
@@ -62,9 +62,11 @@ and `auto_harvest.py` (423). Here is what is in this repository and what is not:
 | [`platform/storage.py`](platform/storage.py) | 1,426 | SQLite schema, in-place migrations, benchmarks, trend history | public |
 | [`platform/design_tokens.py`](platform/design_tokens.py) | 519 | Centralized report design system | public |
 | [`platform/serper_harvest.py`](platform/serper_harvest.py) | 490 | Business discovery and harvesting | public |
+| [`platform/email_templates.py`](platform/email_templates.py) | 444 | Transactional email bodies for report delivery | public |
 | `auto_harvest.py` | 423 | Fallback harvester | private |
 | [`platform/update_industry_scores.py`](platform/update_industry_scores.py) | 384 | DB to published statistics | public |
 | [`platform/parallel_scorer.py`](platform/parallel_scorer.py) | 372 | Concurrent scoring, dedup, graceful shutdown | public |
+| [`platform/report.py`](platform/report.py) | 326 | Client-facing report assembly and summary lines | public |
 | [`platform/post_deploy.py`](platform/post_deploy.py) | 310 | Version-drift detection and self-migrating rescore | public |
 | [`platform/cli.py`](platform/cli.py) | 297 | Operator entry point | public |
 | [`platform/rescore.py`](platform/rescore.py) | 250 | Scheduled re-scoring service | public |
@@ -82,8 +84,11 @@ Also here:
 - [`site/`](site/) — [`build.py`](site/build.py) is the static generator for the product's own
   site. Its point is that **every published statistic derives from a single database query**:
   [`update_industry_scores.py`](platform/update_industry_scores.py) writes `industry_data.json`
-  straight out of SQLite, and `build.py` injects those values into every page at build time, so no
-  number on the site was ever typed by hand. The page tree (`site/src/`) and `industry_data.json`
+  straight out of SQLite, and `build.py` injects those values into every page at build time. One
+  exception, and it is in the published code: `site/build.py:95` carries a hardcoded
+  `BUSINESS_COUNT` floor for when the JSON is absent, and `pdf_report_v2.py:74` does the same.
+  `docs/site-audit-2026-03-31.md` records the time those fallbacks drifted out of sync with the
+  live figure. The page tree (`site/src/`) and `industry_data.json`
   are not published, so from a clean clone it renders nothing — the generator is here, its content
   is not. Also published:
   [`site/.well-known/`](site/.well-known/) and [`site/llms.txt`](site/llms.txt): the product scored
@@ -116,13 +121,17 @@ A ten-iteration adversarial stress test of the business, written April 2026. Att
 *"A free 'AI Readiness Score' inside Google Business Profile would destroy GradeForAI's core scanning
 product overnight."* It happened within months, from Cloudflare rather than Google. The document
 names the threat, estimates it, and proposes the pivot. I wound the product down instead of
-defending a thinning wedge.
+defending a thinning wedge. Read it as what it is, a strategy document: its "1M+ businesses" is the
+projected corpus in an acquisition argument, not a count of what was scored. The scored figure is
+505,140.
 
 **A note on [`site/llms.txt`](site/llms.txt) and [`site/llms-full.txt`](site/llms-full.txt).** These
 are the artifacts exactly as they shipped, not cleaned up for this repository, and their numbers do
 not match the ones at the top of this README: they report a 4-dimension score, an average of 27 or 34
-rather than the v5 figures, and `llms.txt` contradicts itself on vertical count between its summary
-and its stats block. That is not an oversight in the extraction — it is the v5-to-v6 divergence
+rather than the v5 figures, and both files contradict themselves: `llms.txt` gives two different
+vertical counts, `llms-full.txt` reports the average as 34 in one place and 27 in another, and at
+`llms-full.txt:142` it advertises **six** AAO dimensions in a document that says four everywhere
+else. That is not an oversight in the extraction — it is the v5-to-v6 divergence
 confessed at the end of this README, visible in the published output. Two formulas were live at once
 and the agent-facing surface drifted from the site. I have left it as it was rather than retouch a
 record of the mistake.
@@ -147,8 +156,8 @@ python tests/run_tests.py    # 4 tests, no pytest required
 
 `score_engine_stub.py` returns hash-derived placeholder values with the same shape as a real result.
 It scrapes nothing and measures nothing, and every result it produces is stamped
-`methodology_version: "stub"`. The band cutoffs in it are real but already public — they appear in
-this README and on every sample report. The weights that decide which side of a cutoff a business
+`methodology_version: "stub"`. The band cutoffs in it are real but already public — they are listed
+with their ranges in [`site/llms-full.txt`](site/llms-full.txt) and on every sample report. The weights that decide which side of a cutoff a business
 lands on are what stays private.
 
 ## Operator interface
@@ -176,7 +185,18 @@ python platform/cli.py export output.csv
 python platform/cli.py stats
 ```
 
-Scores come back from the stub, not the real engine, and are labelled as such.
+Scores come back from the stub, not the real engine, and are labelled as such. Two things the
+commands do that are worth knowing before you run them:
+
+- **They write outside the repo.** `platform/storage.py:14` puts the SQLite file at
+  `~/agent-readiness/data/scores.db`, or at `/opt/agent-readiness/data/scores.db` if that path
+  already exists. A scan appends a row. Delete `~/agent-readiness/` when you are done.
+- **The stub prints the v3 dimension names** — `Disc / Svc / Book / Contact / Quote / Verify / Pay` —
+  which match neither the six v5 dimensions above nor the four v6 ones. That is the same
+  two-formulas-at-once problem confessed at the bottom of this file, and the operator surface is the
+  one place a third vocabulary survived.
+
+Use `python3` if `python` is not on your path.
 
 ## Running it in production
 
@@ -202,7 +222,7 @@ Supporting operational work: parallel scoring to make half a million records tra
 The scoring engine went through **six major versions**. Each iteration was treated as a measurable calibration problem rather than an opinion: score a sample, compare against manually verified ground truth, diagnose which dimension was miscalibrated, adjust, re-verify. Calibration findings were documented per version.
 
 I also ran an **autoresearch loop** (research, spec, calibrate, verify) to refine methodology against
-real-world data instead of intuition — four parallel research agents whose findings were synthesized
+real-world data instead of intuition — parallel research agents whose findings were synthesized
 and then verified in a second pass. [`docs/autoresearch-v5-findings.md`](docs/autoresearch-v5-findings.md)
 is one of those outputs: the v4-to-v5 redesign, benchmarked against how FICO and SecurityScorecard
 handle per-vertical scoring, and the argument for why vertical-conditional *check logic* is required
@@ -258,7 +278,7 @@ WSGI server with the admin surface split out.
 
 **Migrations are `ALTER TABLE` guarded by `PRAGMA table_info` diffs.** Idempotent and dependency-free,
 which is why I did it, but there is no version history and no down-migration. `businesses` accumulated
-roughly 35 appended columns as a result, and `scores` still carries dead columns from the v3 model.
+roughly 30 appended columns as a result, and `scores` still carries dead columns from the v3 model.
 
 **Two scoring formulas coexisted in production.** The v5 six-dimension composite and the v6
 four-dimension preference score were both computed and both stored. That divergence produced a real

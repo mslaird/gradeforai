@@ -19,8 +19,8 @@ To use it:
     python platform/cli.py score https://example.com --vertical plumber --city Dallas --state TX
 
 The band cutoffs below (90/70/50/30/10) are the only real thing in this file.
-They are already public in the README and in the sample PDF reports, so they
-leak nothing. The weights that decide which side of a cutoff a business lands
+They are already public in site/llms-full.txt and in the sample PDF
+reports, so they leak nothing. The weights that decide which side of a cutoff a business lands
 on are what stays private.
 """
 import hashlib
@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 
 METHODOLOGY_VERSION = "stub"
 
-# Published in the README and on every sample report. Not proprietary.
+# Published in site/llms-full.txt and on every sample report. Not proprietary.
 _BANDS = (
     (90, "Agent Preferred"),
     (70, "Agent Optimized"),
