@@ -68,6 +68,14 @@ def score_business(url):
     composite = _fake(url, "composite")
     dimension_scores = {d: _fake(url, d) for d in _DIMENSIONS}
 
+    # The summary line in report.py reads the legacy v3 dimension names, while
+    # scores/ carries the v5/v6 set. The real engine wrote both during the
+    # migration; the stub does too, so the CLI output is not a row of dashes.
+    legacy = ("discoverability", "service_clarity", "bookability", "contactability",
+              "quotability", "verifiability", "payability")
+    for name in legacy:
+        dimension_scores[name] = {"score": _fake(url, name)}
+
     return {
         "url": url,
         "domain": domain,
